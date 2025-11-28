@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>新一代防红链接生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <style>
+        .gradient-border {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: padding-box;
+            background-clip: padding-box;
+        }
+        .input-focus {
+            transition: all 0.3s ease;
+            box-shadow: 0 0 0 3px rgba(106, 163, 255, 0.3);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+            animation: fadeIn 0.4s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 min-h-screen">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <div class="max-w-md mx-auto bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden">
+            <!-- 顶部渐变条 -->
+            <div class="h-1.5 gradient-border"></div>
+            <!-- 头部 -->
+            <div class="text-center py-6 px-6">
+                <div class="w-16 h-16 mx-auto bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full shadow-lg flex items-center justify-center transform hover:scale-105 transition-transform">
+                    <i class="fas fa-shield-alt text-white text-3xl"></i>
+                </div>
+                <h1 class="mt-4 text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">新一代防红链接生成器</h1>
+                <p class="text-gray-500 mt-1 text-sm">智能防封 · 多平台兼容 · 实时状态检测</p>
+            </div>
+            <!-- 主体内容 -->
+            <div class="p-6 space-y-6">
+                <!-- 目标链接输入 -->
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2 flex items-center">
+                        <i class="fas fa-link mr-2 text-indigo-500"></i> 目标网址
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <input v-model="targetUrl" type="url" placeholder="https://example.com" class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200 bg-gray-50 text-sm" />
+                    </div>
+                </div>
+                <!-- 高级选项折叠面板 -->
+                <div class="border-t border-gray-100 pt-4">
+                    <button @click="showAdvanced = !showAdvanced" class="flex items-center text-indigo-600 hover:text-indigo-700 font-medium text-sm">
+                        <i class="fas fa-cog mr-2"></i> 高级选项
+                        <i :class="['fas ml-1 transition-transform', showAdvanced ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                    </button>
+                    <div v-show="showAdvanced" class="mt-4 space-y-4">
+                        <!-- 自定义域名 -->
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2 text-sm">自定义域名</label>
+                            <input v-model="customDomain" type="text" placeholder="yourdomain.com" class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200 bg-gray-50 text-sm" />
+                        </div>
+                        <!-- 防封接口选择 -->
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2 text-sm">防封接口</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label v-for="option in redirectOptions" :key="option.value" class="flex items-center bg-gray-50 p-2 rounded-lg border border-gray-200 hover:border-indigo-500 transition-colors cursor-pointer">
+                                    <input type="radio" v-model="selectedOption" :value="option.value" class="text-indigo-500 focus:ring-indigo-500">
+                                    <span class="ml-2 text-xs text-gray-700">{{ option.label }}</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 生成按钮 -->
+                <button @click="generateLink" :disabled="isGenerating" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-xl shadow-lg transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center text-base">
+                    <i v-if="!isGenerating" class="fas fa-bolt mr-2"></i> {{ isGenerating ? '生成中...' : '立即生成防红链接' }}
+                </button>
+                <!-- 结果展示 -->
+                <div v-if="resultUrl" class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 animate-fadeIn">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-blue-800 font-semibold text-sm">防红成功链接</span>
+                        <span class="text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full">安全加密</span>
+                    </div>
+                    <div class="flex items-center bg-white rounded-lg p-3 mb-3 border border-gray-100">
+                        <span class="text-indigo-600 font-mono text-xs flex-1 truncate">{{ resultUrl }}</span>
+                        <button @click="copyToClipboard" class="ml-2 p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <!-- 二维码 -->
+                    <div class="text-center">
+                        <div id="qrcode" class="inline-block p-3 bg-white rounded-lg shadow-md"></div>
+                        <p class="mt-2 text-gray-500 text-xs">扫码访问安全链接</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const { createApp, ref, watch } = Vue;
+        createApp({
+            setup() {
+                const targetUrl = ref('');
+                const customDomain = ref('');
+                const showAdvanced = ref(false);
+                const isGenerating = ref(false);
+                const resultUrl = ref('');
+                const selectedOption = ref('default');
+
+                // 防封接口选项
+                const redirectOptions = [
+                    { label: '微信直开', value: 'wechat' },
+                    { label: 'QQ直开', value: 'qq' },
+                    { label: '支付宝直开', value: 'alipay' },
+                    { label: '默认跳转', value: 'default' }
+                ];
+
+                // 不同平台的防封链接生成策略
+                const redirectStrategies = {
+                    wechat: (encodedUrl) => {
+                        const domain = customDomain.value ? `https://${customDomain.value}` : window.location.origin;
+                        return `${domain}/proxy/wechat.html?url=${encodedUrl}`;
+                    },
+                    qq: (encodedUrl) => {
+                        const domain = customDomain.value ? `https://${customDomain.value}` : window.location.origin;
+                        return `${domain}/jump/qq.php?target=${encodedUrl}&platform=qq`;
+                    },
+                    alipay: (encodedUrl) => {
+                        const domain = customDomain.value ? `https://${customDomain.value}` : window.location.origin;
+                        return `${domain}/alipay/guard.html?data=${encodedUrl}`;
+                    },
+                    default: (encodedUrl) => {
+                        const domain = customDomain.value ? `https://${customDomain.value}` : window.location.origin;
+                        return `${domain}/s/${encodedUrl}`;
+                    }
+                };
+
+                // URL验证
+                const validateUrl = () => {
+                    if (!targetUrl.value) {
+                        showToast('请输入目标网址！', 'warning');
+                        return false;
+                    }
+                    try {
+                        new URL(targetUrl.value);
+                        return true;
+                    } catch {
+                        showToast('请输入有效的URL地址！', 'error');
+                        return false;
+                    }
+                };
+
+                // 生成防红链接
+                const generateLink = () => {
+                    if (!validateUrl()) return;
+                    isGenerating.value = true;
+
+                    setTimeout(() => {
+                        try {
+                            // 编码原始URL
+                            const encodedUrl = btoa(encodeURIComponent(targetUrl.value));
+
+                            // 根据选中的防封接口调用对应策略
+                            const strategy = redirectStrategies[selectedOption.value] || redirectStrategies.default;
+                            resultUrl.value = strategy(encodedUrl);
+
+                            // 生成二维码
+                            const qrcodeEl = document.getElementById("qrcode");
+                            qrcodeEl.innerHTML = ""; // 清空旧二维码
+                            new QRCode(qrcodeEl, {
+                                text: resultUrl.value,
+                                width: 150,
+                                height: 150,
+                                colorDark: "#4F46E5",
+                                colorLight: "#FFFFFF",
+                                correctLevel: QRCode.CorrectLevel.H
+                            });
+
+                            showToast('防红链接生成成功！', 'success');
+                        } catch (error) {
+                            console.error(error);
+                            showToast('生成失败，请重试', 'error');
+                        } finally {
+                            isGenerating.value = false;
+                        }
+                    }, 800);
+                };
+
+                // 复制到剪贴板
+                const copyToClipboard = async () => {
+                    try {
+                        await navigator.clipboard.writeText(resultUrl.value);
+                        showToast('链接已复制到剪贴板！', 'success');
+                    } catch {
+                        showToast('复制失败，请手动复制', 'error');
+                    }
+                };
+
+                // 提示消息
+                const showToast = (message, type) => {
+                    const toast = document.createElement('div');
+                    toast.className = `fixed bottom-6 right-6 px-4 py-2 rounded-lg text-white font-medium animate-fadeIn text-sm max-w-xs z-50`;
+                    switch(type) {
+                        case 'success': toast.style.background = '#10B981'; break;
+                        case 'error': toast.style.background = '#EF4444'; break;
+                        case 'warning': toast.style.background = '#F59E0B'; break;
+                        default: toast.style.background = '#6366F1';
+                    }
+                    toast.textContent = message;
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 2500);
+                };
+
+                return {
+                    targetUrl,
+                    customDomain,
+                    showAdvanced,
+                    isGenerating,
+                    resultUrl,
+                    selectedOption,
+                    redirectOptions,
+                    generateLink,
+                    copyToClipboard
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
